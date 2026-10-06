@@ -8,13 +8,20 @@ const jobs = [
   { id: "creator", name: "Content Creator", description: "Film a short street video and post it.", reward: 2500, skill: "Charisma" },
 ];
 
-export default function JobSystem({ money, onEarn }: { money: number; onEarn: (amount: number) => void }) {
+export default function JobSystem({ money, onEarn, onStartDelivery }: { money: number; onEarn: (amount: number) => void; onStartDelivery?: () => boolean }) {
   const [active, setActive] = useState<string | null>(null);
   const [message, setMessage] = useState("Choose a starter hustle.");
 
   const start = (id: string) => {
     const job = jobs.find((item) => item.id === id);
     if (!job) return;
+    if (job.id === "delivery" && onStartDelivery) {
+      const started = onStartDelivery();
+      if (!started) return;
+      setActive(id);
+      setMessage("Delivery started. Reach the marked destination to earn ₦3,500.");
+      return;
+    }
     setActive(id);
     setMessage(`${job.name} started. Complete the activity to earn ₦${job.reward.toLocaleString("en-NG")}.`);
     window.setTimeout(() => {
