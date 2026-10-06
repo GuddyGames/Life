@@ -1,53 +1,18 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import ThirdPersonController from "./ThirdPersonController";
+import WorldNPCs from "./WorldNPCs";
 
-function Player() {
-  const ref = useRef<THREE.Mesh>(null);
-  const [position, setPosition] = useState<[number, number, number]>([0, 1, 4]);
-
-  useFrame((_, delta) => {
-    if (!ref.current) return;
-    ref.current.rotation.y += delta * 0.15;
-  });
-
-  return (
-    <mesh ref={ref} position={position} onClick={() => setPosition(([x, y, z]) => [x, y, z - 1])}>
-      <capsuleGeometry args={[0.45, 1, 8, 16]} />
-      <meshStandardMaterial color="#2563eb" />
-    </mesh>
-  );
+function Player({ position, setPosition }: { position: THREE.Vector3; setPosition: (value: THREE.Vector3) => void }) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame((_, delta) => { if (ref.current) ref.current.position.lerp(position, Math.min(delta * 14, 1)); });
+  return <group ref={ref} position={position}><mesh castShadow><capsuleGeometry args={[0.4, 0.9, 8, 16]} /><meshStandardMaterial color="#2563eb" /></mesh><mesh position={[0, 0.72, 0]} castShadow><sphereGeometry args={[0.28, 16, 16]} /><meshStandardMaterial color="#70412b" /></mesh><ThirdPersonController position={position} onMove={setPosition} /></group>;
 }
-
-function Building({ position, scale, color }: { position: [number, number, number]; scale: [number, number, number]; color: string }) {
-  return <mesh position={position} scale={scale} castShadow><boxGeometry /><meshStandardMaterial color={color} /></mesh>;
-}
-
-function Palm({ position }: { position: [number, number, number] }) {
-  return <group position={position}>
-    <mesh position={[0, 1.2, 0]}><cylinderGeometry args={[0.12, 0.18, 2.4, 8]} /><meshStandardMaterial color="#6b4f35" /></mesh>
-    <mesh position={[0, 2.45, 0]}><sphereGeometry args={[0.65, 8, 8]} /><meshStandardMaterial color="#16803c" /></mesh>
-  </group>;
-}
-
-function World() {
-  return <>
-    <ambientLight intensity={1.5} />
-    <directionalLight position={[5, 10, 5]} intensity={2} castShadow />
-    <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[40, 40]} /><meshStandardMaterial color="#24352d" /></mesh>
-    <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[6, 40]} /><meshStandardMaterial color="#252b31" /></mesh>
-    <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[0.12, 40]} /><meshStandardMaterial color="#f5c542" /></mesh>
-    <Building position={[-7, 2, -5]} scale={[3, 4, 3]} color="#b66b3f" />
-    <Building position={[7, 2.5, -7]} scale={[3.5, 5, 2.8]} color="#526b7d" />
-    <Building position={[-7, 1.5, 5]} scale={[3, 3, 2.5]} color="#d3a35d" />
-    <Building position={[7, 1.8, 5]} scale={[3, 3.6, 3]} color="#7b4f66" />
-    <Palm position={[-4, 0, -1]} /><Palm position={[4, 0, 2]} /><Palm position={[-4, 0, 8]} />
-    <Player />
-  </>;
-}
-
-export default function LifeWorld() {
-  return <div className="world-canvas"><Canvas camera={{ position: [9, 8, 11], fov: 48 }} shadows><World /></Canvas></div>;
-}
+function Building({ position, scale, color }: { position: [number, number, number]; scale: [number, number, number]; color: string }) { return <mesh position={position} scale={scale} castShadow><boxGeometry /><meshStandardMaterial color={color} /></mesh>; }
+function Palm({ position }: { position: [number, number, number] }) { return <group position={position}><mesh position={[0, 1.2, 0]}><cylinderGeometry args={[0.12, 0.18, 2.4, 8]} /><meshStandardMaterial color="#6b4f35" /></mesh><mesh position={[0, 2.45, 0]}><sphereGeometry args={[0.65, 8, 8]} /><meshStandardMaterial color="#16803c" /></mesh></group>; }
+function CameraFollow({ target }: { target: THREE.Vector3 }) { const targetRef = useRef(target); useFrame(({ camera }, delta) => { targetRef.current.lerp(target, Math.min(delta * 10, 1)); const desired = new THREE.Vector3(targetRef.current.x + 7, 6.5, targetRef.current.z + 9); camera.position.lerp(desired, Math.min(delta * 4, 1)); camera.lookAt(targetRef.current.x, 1, targetRef.current.z); }); return null; }
+function World({ playerPosition, setPlayerPosition }: { playerPosition: THREE.Vector3; setPlayerPosition: (value: THREE.Vector3) => void }) { return <><ambientLight intensity={1.5} /><directionalLight position={[5, 10, 5]} intensity={2} castShadow /><mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[40, 40]} /><meshStandardMaterial color="#24352d" /></mesh><mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[6, 40]} /><meshStandardMaterial color="#252b31" /></mesh><mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[0.12, 40]} /><meshStandardMaterial color="#f5c542" /></mesh><Building position={[-7, 2, -5]} scale={[3, 4, 3]} color="#b66b3f" /><Building position={[7, 2.5, -7]} scale={[3.5, 5, 2.8]} color="#526b7d" /><Building position={[-7, 1.5, 5]} scale={[3, 3, 2.5]} color="#d3a35d" /><Building position={[7, 1.8, 5]} scale={[3, 3.6, 3]} color="#7b4f66" /><Palm position={[-4, 0, -1]} /><Palm position={[4, 0, 2]} /><Palm position={[-4, 0, 8]} /><WorldNPCs /><Player position={playerPosition} setPosition={setPlayerPosition} /><CameraFollow target={playerPosition} /></>; }
+export default function LifeWorld() { const [playerPosition, setPlayerPosition] = useState(() => new THREE.Vector3(0, 1, 4)); const [characterName, setCharacterName] = useState("Goodness"); useEffect(() => { try { const saved = localStorage.getItem("life-character"); if (saved) setCharacterName(JSON.parse(saved).name || "Goodness"); } catch {} }, []); return <div className="world-canvas"><div className="world-hud"><strong>{characterName}</strong><span>Yaba · Day 1 · 08:00</span><b>₦15,000</b><small>WASD / Arrow keys to move</small></div><Canvas camera={{ position: [7, 6.5, 13], fov: 50 }} shadows><World playerPosition={playerPosition} setPlayerPosition={setPlayerPosition} /></Canvas></div>; }
